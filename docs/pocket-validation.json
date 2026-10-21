@@ -1,0 +1,42 @@
+{
+  "environment": "Pi LineageOS ARM64 VM -> Pocket Android 9",
+  "command": "python3 /home/pi/verify-neo-pocket.py",
+  "exitCode": 0,
+  "providerLog": "NEO_POCKET_READY version=v2.4-pocket methods=6 guest_uid=0\nPOCKET_ZYGISK_INSTALL result=0\n",
+  "events": "onLoad uid=0 target=-1 pid=9618\npreServer uid=0 target=1000 pid=9618\npostServer uid=1000 target=1000 pid=9618\nonLoad uid=0 target=-1 pid=9760\nonLoad uid=0 target=-1 pid=9770\nonLoad uid=0 target=-1 pid=9796\nonLoad uid=0 target=-1 pid=9811\nonLoad uid=0 target=-1 pid=9880\nonLoad uid=0 target=-1 pid=9906\nonLoad uid=0 target=-1 pid=9919\nonLoad uid=0 target=-1 pid=9945\nonLoad uid=0 target=-1 pid=9952\nonLoad uid=0 target=-1 pid=9993\nonLoad uid=0 target=-1 pid=10025\nonLoad uid=0 target=-1 pid=10109\npreApp uid=0 target=10019 pid=10109\nmoduleDir uid=0 target=-1 pid=10109\nflags uid=0 target=-1 pid=10109\nunsupportedCompanion uid=0 target=-1 pid=10109\njniHook uid=0 target=-1 pid=10109\npltHook uid=0 target=-1 pid=10109\npostApp uid=10019 target=10019 pid=10109\nexemptFd uid=10019 target=-1 pid=10109\nonLoad uid=0 target=-1 pid=10140\npreApp uid=0 target=10019 pid=10140\nmoduleDir uid=0 target=-1 pid=10140\nflags uid=0 target=-1 pid=10140\nunsupportedCompanion uid=0 target=-1 pid=10140\njniHook uid=0 target=-1 pid=10140\npltHook uid=0 target=-1 pid=10140\npostApp uid=10019 target=10019 pid=10140\nexemptFd uid=10019 target=-1 pid=10140\n",
+  "appProcesses": [
+    10109,
+    10140
+  ],
+  "appResult": {
+    "environment": "Pi LineageOS VM -> Pocket Android 9 -> real APK with JNI",
+    "command": "python3 /home/pi/test_syscall_app_on_pi.py",
+    "managerApk": null,
+    "exitCode": 0,
+    "moduleExpectedEnabled": true,
+    "launchExisting": true,
+    "profiles": {
+      "adapted": {
+        "libcOk": true,
+        "directOk": true,
+        "libcErrno": 0,
+        "directErrno": 0,
+        "kernelUid": 10177,
+        "profile": "adapted",
+        "guestUid": 10019
+      },
+      "baseline": {
+        "libcOk": true,
+        "directOk": false,
+        "libcErrno": 0,
+        "directErrno": 2,
+        "kernelUid": 10177,
+        "profile": "baseline",
+        "guestUid": 10019
+      }
+    },
+    "scope": "Opt-in openat prefix translation; existing wrappers retained"
+  },
+  "companionSupported": false,
+  "kernelNamespacesSupported": false
+}

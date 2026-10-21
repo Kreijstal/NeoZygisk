@@ -42,3 +42,7 @@ Validation performed:
   tests passed.
 - `sh tests/test-mount-namespace.sh`: real Linux namespace test passed. This is
   a separate Linux test and does not demonstrate Pocket namespace privileges.
+
+A separate cooperative provider has since been added; see
+[pocket-adapter.md](pocket-adapter.md). The unmodified daemon limitation above
+remains applicable to the original privileged startup path.

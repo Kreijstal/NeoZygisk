@@ -1,4 +1,7 @@
 #include "module.hpp"
+#ifdef NEO_POCKET
+#include "pocket.hpp"
+#endif
 
 #include <android/dlext.h>
 #include <dlfcn.h>
@@ -56,7 +59,12 @@ bool ZygiskModule::RegisterModuleImpl(ApiTable *api, long *module) {
         api->v2.getFlags = [](auto) { return ZygiskModule::getFlags(); };
     }
     if (api_version >= 4) {
-        api->v4.pltHookCommit = []() { return lsplt::CommitHook(g_hook->cached_map_infos); };
+        api->v4.pltHookCommit = []() {
+#ifdef NEO_POCKET
+            g_hook->cached_map_infos = lsplt::MapInfo::Scan();
+#endif
+            return lsplt::CommitHook(g_hook->cached_map_infos);
+        };
         api->v4.pltHookRegister = [](dev_t dev, ino_t inode, const char *symbol, void *fn,
                                      void **backup) {
             if (dev == 0 || inode == 0 || symbol == nullptr || fn == nullptr) return;
@@ -93,7 +101,11 @@ void ZygiskModule::setOption(zygisk::Option opt) {
     if (g_ctx == nullptr) return;
     switch (opt) {
     case zygisk::FORCE_DENYLIST_UNMOUNT:
+#ifdef NEO_POCKET
+        pocket::unsupported("FORCE_DENYLIST_UNMOUNT");
+#else
         g_ctx->flags |= DO_REVERT_UNMOUNT;
+#endif
         break;
     case zygisk::DLCLOSE_MODULE_LIBRARY:
         unload = true;
@@ -179,6 +191,9 @@ void ZygiskContext::plt_hook_process_regex() {
 bool ZygiskContext::plt_hook_commit() {
     {
         mutex_guard lock(hook_info_lock);
+#ifdef NEO_POCKET
+        g_hook->cached_map_infos = lsplt::MapInfo::Scan();
+#endif
         plt_hook_process_regex();
         register_info.clear();
         ignore_info.clear();
@@ -291,14 +306,20 @@ void ZygiskContext::run_modules_pre() {
     auto size = ms.size();
     for (size_t i = 0; i < size; i++) {
         auto &m = ms[i];
-        if (void *handle = DlopenMem(m.memfd, RTLD_NOW);
-            void *entry = handle ? dlsym(handle, "zygisk_module_entry") : nullptr) {
+#ifdef NEO_POCKET
+        void *handle = dlopen(pocket::module_path(i).c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (!handle) LOGE("Pocket module %s: %s", m.name.c_str(), dlerror());
+#else
+        void *handle = DlopenMem(m.memfd, RTLD_NOW);
+#endif
+        if (void *entry = handle ? dlsym(handle, "zygisk_module_entry") : nullptr) {
             modules.emplace_back(i, handle, entry);
         }
     }
 
     for (auto &m : modules) {
         m.onLoad(env);
+        if (!m.valid()) continue;
         if (flags & APP_SPECIALIZE) {
             m.preAppSpecialize(args.app);
         } else if (flags & SERVER_FORK_AND_SPECIALIZE) {
@@ -312,6 +333,7 @@ void ZygiskContext::run_modules_post() {
 
     size_t modules_unloaded = 0;
     for (const auto &m : modules) {
+        if (!m.valid()) continue;
         if (flags & APP_SPECIALIZE) {
             m.postAppSpecialize(args.app);
         } else if (flags & SERVER_FORK_AND_SPECIALIZE) {
@@ -319,7 +341,11 @@ void ZygiskContext::run_modules_post() {
         }
         if (m.tryUnload()) modules_unloaded++;
     }
+#ifdef NEO_POCKET
+    (void)modules_unloaded;
+#endif
 
+#ifndef NEO_POCKET
     if (modules.size() > 0) {
         LOGV("modules unloaded: %zu/%zu", modules_unloaded, modules.size());
         if (modules.size() == modules_unloaded) clean_libc_trace();
@@ -327,6 +353,7 @@ void ZygiskContext::run_modules_post() {
         g_hook->should_spoof_maps =
             (flags & APP_SPECIALIZE) && (modules.size() - modules_unloaded) > 0;
     }
+#endif
 }
 
 void ZygiskContext::app_specialize_pre() {
@@ -347,6 +374,7 @@ void ZygiskContext::app_specialize_pre() {
     }
 
     bool skip_zygiskd = false;
+#ifndef NEO_POCKET
     if (is_isolated_aid) {
         UniqueFd fd = zygiskd::Connect(1);
         if (fd == -1) {
@@ -354,6 +382,7 @@ void ZygiskContext::app_specialize_pre() {
         }
     }
 
+#endif
     if (!skip_zygiskd && info_flags == 0) info_flags = zygiskd::GetProcessFlags(uid);
 
     if ((info_flags & UNMOUNT_MASK) == UNMOUNT_MASK) {
@@ -403,6 +432,7 @@ void ZygiskContext::nativeForkSystemServer_pre() {
     LOGV("pre forkSystemServer");
     flags |= SERVER_FORK_AND_SPECIALIZE;
 
+#ifndef NEO_POCKET
     for (auto &map : g_hook->cached_map_infos) {
         if (map.dev == 0 && map.inode == 0 && map.offset == 0 && map.is_private &&
             map.path == "[anon:stack_and_tls:main]") {
@@ -417,10 +447,13 @@ void ZygiskContext::nativeForkSystemServer_pre() {
         }
     }
 
+#endif
     fork_pre();
     if (is_child()) {
         server_specialize_pre();
+#ifndef NEO_POCKET
         zygiskd::CacheMountNamespace(getpid());
+#endif
     }
     sanitize_fds();
 }
@@ -456,6 +489,14 @@ void ZygiskContext::nativeForkAndSpecialize_pre() {
     LOGV("pre forkAndSpecialize [%s]", process);
     flags |= APP_FORK_AND_SPECIALIZE;
 
+#ifdef NEO_POCKET
+    if (args.app->is_child_zygote && *args.app->is_child_zygote) {
+        pocket_rejected = true;
+        env->ReleaseStringUTFChars(args.app->nice_name, process);
+        process = nullptr;
+        return;
+    }
+#else
     if (!g_hook->zygote_unmounted && g_hook->zygote_traces.size() == 0) {
         info_flags = zygiskd::GetProcessFlags(args.app->uid);
 
@@ -480,6 +521,7 @@ void ZygiskContext::nativeForkAndSpecialize_pre() {
         }
     }
 
+#endif
     fork_pre();
     if (is_child()) {
         app_specialize_pre();
@@ -489,6 +531,9 @@ void ZygiskContext::nativeForkAndSpecialize_pre() {
 }
 
 void ZygiskContext::nativeForkAndSpecialize_post() {
+#ifdef NEO_POCKET
+    if (pocket_rejected) return;
+#endif
     if (is_child()) {
         LOGV("post forkAndSpecialize [%s]", process);
         app_specialize_post();
@@ -499,6 +544,10 @@ void ZygiskContext::nativeForkAndSpecialize_post() {
 // -----------------------------------------------------------------
 
 bool ZygiskContext::update_mount_namespace(zygiskd::MountNamespace namespace_type) {
+#ifdef NEO_POCKET
+    pocket::unsupported("mount namespace switching");
+    return false;
+#else
     const char *type_str = (namespace_type == zygiskd::MountNamespace::Clean ? "Clean" : "Root");
     LOGV("updating mount namespace to type %s", type_str);
 
@@ -521,4 +570,5 @@ bool ZygiskContext::update_mount_namespace(zygiskd::MountNamespace namespace_typ
 
     close(ns_fd);
     return true;
+#endif
 }

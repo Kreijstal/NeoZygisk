@@ -263,6 +263,9 @@ struct ZygiskContext {
     std::list<ZygiskModule> modules;
 
     pid_t pid;
+#ifdef NEO_POCKET
+    bool pocket_rejected = false;
+#endif
     uint32_t flags;
     uint32_t info_flags;
     std::vector<bool> allowed_fds;

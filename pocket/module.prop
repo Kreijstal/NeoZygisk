@@ -1,0 +1,6 @@
+id=neozygisk_pocket_provider
+name=NeoZygisk Pocket provider
+version=0.1
+versionCode=1
+author=NeoZygisk contributors
+description=Optional cooperative Zygisk provider for ARM64 Pocket Android 9. No privileged injector or mount namespace support.

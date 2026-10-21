@@ -1,0 +1,5 @@
+[ "$ARCH" = arm64 ] || abort 'Only ARM64 Pocket Android 9 is supported'
+[ -n "$POCKET_DIRECT_ROOT" ] || abort 'Install inside Pocket, not on the physical host'
+ui_print 'NeoZygisk cooperative provider installed.'
+ui_print 'Enable guest Zygisk and restart Pocket.'
+ui_print 'Companions and kernel namespace operations are unsupported.'

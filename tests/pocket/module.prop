@@ -1,0 +1,6 @@
+id=neo_adapter_fixture
+name=Neo Pocket adapter validation
+version=1
+versionCode=1
+author=Pocket
+description=Dedicated offline fixture

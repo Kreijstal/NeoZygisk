@@ -44,3 +44,9 @@ To configure the DenyList for a specific application, use the appropriate settin
 > **Important Note for Magisk Users**
 >
 > The **`Enforce DenyList`** option in Magisk enables Magisk's *own* DenyList implementation. This is separate from NeoZygisk's functionality, is not guaranteed to hide all mount-related traces, and may conflict with NeoZygisk's hiding mechanisms. It is strongly recommended to leave this option disabled and rely solely on NeoZygisk's configuration.
+
+## Pocket userspace adapter
+
+This fork also provides a separate, optional ARM64 Pocket Android 9 provider.
+See [build instructions, supported APIs and validation](docs/pocket-adapter.md).
+The normal privileged NeoZygisk injector remains a separate build target.
