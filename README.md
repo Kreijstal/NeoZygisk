@@ -33,6 +33,9 @@ To achieve a clean mount namespace for applications on the DenyList, NeoZygisk e
 
 ## Configuration
 
+This fork includes disabled-by-default, experimental support for preserving one
+empty tmpfs bind during cleanup. See [the setup and limitations](docs/empty-tmpfs.md).
+
 To configure the DenyList for a specific application, use the appropriate setting within your root management app:
 
 *   **For APatch/KernelSU:** Enable the **`Umount modules`** option for your target application.

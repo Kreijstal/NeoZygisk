@@ -76,6 +76,7 @@
 mod companion;
 mod constants;
 mod dl;
+mod empty_tmpfs;
 mod mount;
 mod root_impl;
 mod utils;

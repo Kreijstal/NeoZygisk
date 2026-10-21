@@ -4,3 +4,5 @@
 build
 local.properties
 Cargo.lock
+/zygiskd/target/
+/tests/adapter/target/

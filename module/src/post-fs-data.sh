@@ -20,6 +20,12 @@ if [ "$(which magisk)" ]; then
   done
 fi
 
+if [ -f /data/adb/neozygisk-preserve-empty-tmpfs ]; then
+  if ! sh "$MODDIR/prepare-empty-tmpfs.sh"; then
+    log -p w -t zygisk-sh "Empty tmpfs view preparation failed; keeping normal cleanup policy"
+  fi
+fi
+
 create_sys_perm() {
   mkdir -p $1
   chmod 555 $1

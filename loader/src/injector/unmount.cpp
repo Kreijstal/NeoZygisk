@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "logging.hpp"
+#include "empty_tmpfs.h"
 #include "module.hpp"
 #include "zygisk.hpp"
 
@@ -130,13 +131,30 @@ std::vector<mount_info> check_zygote_traces(uint32_t info_flags) {
         }
     }
 
+    std::vector<dev_t> magisk_runtime_devices;
+    if (info_flags & PROCESS_ROOT_IS_MAGISK) {
+        for (const auto& info : mount_infos) {
+            if (nz_magisk_tmpfs_anchor(info.root.c_str(), info.target.c_str(), info.type.c_str(),
+                                       info.source.c_str(), major(info.device), minor(info.device))) {
+                magisk_runtime_devices.push_back(info.device);
+            }
+        }
+    }
+
     for (const auto& info : mount_infos) {
+        const bool neutral_magisk_runtime = info.type == "tmpfs" && info.source == "tmpfs" &&
+            std::find(magisk_runtime_devices.begin(), magisk_runtime_devices.end(), info.device) !=
+                magisk_runtime_devices.end();
         const bool should_unmount =
             starts_with(info.root, "/adb/modules") ||
             starts_with(info.target, "/data/adb/modules") || (info.source == mount_source_name) ||
-            (!kernel_su_module_source.empty() && info.source == kernel_su_module_source);
+            (!kernel_su_module_source.empty() && info.source == kernel_su_module_source) ||
+            neutral_magisk_runtime;
 
-        if (should_unmount) {
+        if (should_unmount &&
+            !nz_keep_empty_tmpfs(info.root.c_str(), info.target.c_str(), info.type.c_str(),
+                                info.source.c_str(), info.vfs_options.c_str(),
+                                major(info.device), minor(info.device))) {
             traces.push_back(info);
         }
     }

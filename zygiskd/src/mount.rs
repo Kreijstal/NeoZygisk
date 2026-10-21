@@ -175,6 +175,15 @@ impl MountNamespaceManager {
                 None
             };
 
+        let magisk_runtime_devices: std::collections::HashSet<_> = if matches!(
+            root_impl::get(), root_impl::RootImpl::Magisk
+        ) {
+            mount_infos.iter().filter(|info| crate::empty_tmpfs::is_magisk_anchor(info))
+                .map(|info| info.majmin.clone()).collect()
+        } else {
+            std::collections::HashSet::new()
+        };
+
         for info in mount_infos {
             let path_str = info.mount_point.to_str().unwrap_or("");
             let mount_source_str = info.mount_source.as_deref();
@@ -182,9 +191,11 @@ impl MountNamespaceManager {
             let should_unmount = info.root.starts_with("/adb/modules")
                 || path_str.starts_with("/data/adb/modules")
                 || (root_source.is_some() && mount_source_str == root_source)
-                || (ksu_module_source.is_some() && info.mount_source == ksu_module_source);
+                || (ksu_module_source.is_some() && info.mount_source == ksu_module_source)
+                || (info.fs_type == "tmpfs" && mount_source_str == Some("tmpfs")
+                    && magisk_runtime_devices.contains(&info.majmin));
 
-            if should_unmount {
+            if should_unmount && !crate::empty_tmpfs::keep_mount(&info) {
                 unmount_targets.push(info);
             }
         }
