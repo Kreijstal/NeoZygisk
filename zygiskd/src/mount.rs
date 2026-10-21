@@ -6,7 +6,7 @@
 //! between different mount namespaces, which is crucial for isolating Zygisk
 //! modules and providing them with a clean environment.
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use log::{debug, error, trace};
 use procfs::process::{MountInfo, Process};
 use rustix::thread as rustix_thread;
@@ -42,11 +42,14 @@ impl TryFrom<u8> for MountNamespace {
 /// Switches the current thread into the mount namespace of a given process.
 pub fn switch_mount_namespace(pid: i32) -> Result<()> {
     let cwd = std::env::current_dir()?;
-    let mnt_ns_file = fs::File::open(format!("/proc/{}/ns/mnt", pid))?;
+    let namespace_path = format!("/proc/{}/ns/mnt", pid);
+    let mnt_ns_file = fs::File::open(&namespace_path)
+        .with_context(|| format!("open mount namespace {namespace_path}"))?;
     rustix_thread::move_into_link_name_space(
         mnt_ns_file.as_fd(),
         Some(rustix_thread::LinkNameSpaceType::Mount),
-    )?;
+    )
+    .with_context(|| format!("join mount namespace {namespace_path} (requires kernel privilege)"))?;
     // `setns` can change the current working directory, so we restore it.
     std::env::set_current_dir(cwd)?;
     Ok(())
